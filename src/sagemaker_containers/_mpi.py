@@ -62,6 +62,15 @@ class WorkerRunner(_process.ProcessRunner):
             time.sleep(30)
         logger.info("MPI process finished.")
 
+    def _create_command(self):
+        """Override the _create_command to expand with AWS credentials
+        """
+        command = super(WorkerRunner, self)._create_command()
+        for credential in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
+            if credential in os.environ:
+                command.extend(["-x", credential])
+        return command
+
     def _wait_master_to_start(self):  # type: () -> None
         """Placeholder docstring"""
         while not _can_connect(self._master_hostname):
