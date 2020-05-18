@@ -28,6 +28,8 @@ from sagemaker_containers import _logging, _process, _timeout
 logger = _logging.get_logger()
 logging.getLogger("paramiko").setLevel(logging.INFO)
 
+AWS_CONTAINER_CREDENTIALS_ENV = "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
+
 
 class WorkerRunner(_process.ProcessRunner):
     """Runner responsible for preparing MPI distributed training and waiting for MPI
@@ -61,15 +63,6 @@ class WorkerRunner(_process.ProcessRunner):
             _wait_orted_process_to_finish()
             time.sleep(30)
         logger.info("MPI process finished.")
-
-    def _create_command(self):
-        """Override the _create_command to expand with AWS credentials
-        """
-        command = super(WorkerRunner, self)._create_command()
-        for credential in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if credential in os.environ:
-                command.extend(["-x", credential])
-        return command
 
     def _wait_master_to_start(self):  # type: () -> None
         """Placeholder docstring"""
@@ -215,9 +208,9 @@ class MasterRunner(_process.ProcessRunner):
 
         command.extend(additional_options)
 
-        for credential in ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]:
-            if credential in os.environ:
-                command.extend(["-x", credential])
+        # pass AWS_CONTAINER_CREDENTIALS_RELATIVE_URI to parallel application
+        if AWS_CONTAINER_CREDENTIALS_ENV in os.environ:
+            command.extend(["-x", AWS_CONTAINER_CREDENTIALS_ENV])
 
         for name in self._env_vars:
             command.extend(["-x", name])
